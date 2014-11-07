@@ -1,0 +1,66 @@
+#!/bin/bash
+# 
+# read-rfc-txt
+# a pager for RFC text files
+
+file="$1"
+
+# get line numbers of page boundaries
+pages=( 1 $(sed -n '/\f/=' "$file") )
+page=0
+
+# store search results
+results=( )
+result=0
+query=
+
+print_page() {
+	start_line=${pages[page]}
+	(( end_line=pages[page+1]-1 ))
+	sed "1,$start_line d; $end_line q" "$file"
+}
+
+print_search() {
+	page=${results[$result]}
+	print_page | grep --color -E "$query|$"
+}
+
+print_help() {
+	cat <<EOF
+j/n: next page
+k/p: previous page
+<number>: go to page number
+q: exit
+/<search>: search
+n: next search result
+N: previous search result
+EOF
+}
+
+search_for() {
+	query="$1"
+	results=( $(awk "
+		BEGIN{page=0; printed=0}\
+		/\f/{page++; printed=0}
+		/$query/ && !printed {print page; printed=1}\
+	" "$file") )
+	result=0
+}
+
+print_page
+while true
+do
+	read -p "> " cmd || exit
+	case $cmd in
+		'') print_page;;
+		h|help) print_help;;
+		q|quit|exit) exit;;
+		k) ((page--)); print_page;;
+		j) ((page++)); print_page;;
+		[0-9]*) ((page = cmd-1)); print_page;;
+		/*) search_for "${cmd:1}"; print_search;;
+		n) ((result++)); print_search;;
+		N) ((result--)); print_search;;
+		*) echo "Unknown command $cmd" >&2;;
+	esac
+done
