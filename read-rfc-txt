@@ -5,9 +5,26 @@
 
 file="$1"
 
+if [[ -z "$file" ]]
+then
+	echo "Usage: $(basename $0) <file>" >&2
+	exit 1
+fi
+
+if [[ ! -f "$file" ]]
+then
+	echo "Unable to read $file" >&2
+	exit 1
+fi
+
 # get line numbers of page boundaries
 pages=( 1 $(sed -n '/\f/=' "$file") )
 page=0
+if [[ -z ${pages[1]} ]]
+then
+	echo "No page markers (\f) found" >&2
+	exit 1
+fi
 
 # store search results
 results=( )
